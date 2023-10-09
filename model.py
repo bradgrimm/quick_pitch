@@ -136,18 +136,19 @@ class QuickPitch(pl.LightningModule):
         return self.wavenet(x)
 
     def training_step(self, batch, batch_idx):
-        print(batch.keys())
-        x, y = batch
-        y_pred = self.forward(x)
-        loss = error_to_signal(y[:, :, -y_pred.size(2) :], y_pred).mean()
-        logs = {"loss": loss}
-        return {"loss": loss, "log": logs}
+        result = self._step(batch, batch_idx, 'train')
+        result['loss'] = result['train_loss']
+        return result
 
     def validation_step(self, batch, batch_idx):
-        x, y = batch
-        y_pred = self.forward(x)
+        return self._step(batch, batch_idx, 'val')
+
+    def _step(self, batch, batch_idx, prefix):
+        print(batch['audio'].shape)
+        y_pred = self.forward(batch['audio'])
+        print(y_pred.shape)
         loss = error_to_signal(y[:, :, -y_pred.size(2) :], y_pred).mean()
-        return {"val_loss": loss}
+        return {f"{prefix}_loss": loss}
 
     def validation_epoch_end(self, outs):
         avg_loss = torch.stack([x["val_loss"] for x in outs]).mean()

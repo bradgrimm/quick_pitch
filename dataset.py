@@ -3,7 +3,7 @@ from pathlib import Path
 import librosa
 import numpy as np
 import pandas as pd
-import torch
+from basic_pitch.constants import AUDIO_SAMPLE_RATE, AUDIO_WINDOW_LENGTH, ANNOT_N_FRAMES
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
@@ -25,6 +25,14 @@ def load_datasets():
     return train_dataset, val_dataset
 
 
+def estimate_annotations(n_samples):
+    total_frames = AUDIO_SAMPLE_RATE * AUDIO_WINDOW_LENGTH
+    frames_per_annot = total_frames / ANNOT_N_FRAMES
+    n = (n_samples // frames_per_annot).astype(int)
+    n += ((n_samples % total_frames) == 0).astype(int)
+    return n
+
+
 class EmbeddingDataset(Dataset):
     def __init__(self, df):
         self.df = df
@@ -37,8 +45,16 @@ class EmbeddingDataset(Dataset):
         audio, _ = librosa.load(str(row.audio_path), sr=AUDIO_SAMPLE_RATE, mono=True)
         embedding_data = np.load(row.embedding_path, allow_pickle=True)
         target_data = {
-            k: torch.from_numpy(v)
+            k: self._prepare_target(v)
             for k, v in embedding_data.item().items()
             if k in VALID_COLUMNS
         }
-        return {'audio': audio, **target_data}
+        return {'audio': self._prepare_audio(audio), **target_data}
+
+    def _prepare_audio(self, x):
+        # TODO: how much adio do we actually want?
+        return np.expand_dims(x[:16000], axis=0)
+
+    def _prepare_target(self, x):
+        # TODO: How many targets can we handle?
+        return x[:64]

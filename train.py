@@ -8,7 +8,7 @@ app = typer.Typer()
 
 @app.command()
 def train(
-        batch_size: int = 64,
+        batch_size: int = 4,
         max_epochs: int = 1000,
         num_channels: int = 4,
         dilation_depth: int = 9,
