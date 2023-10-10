@@ -1,4 +1,5 @@
 import pytorch_lightning as pl
+from torch.nn import functional as F
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -24,7 +25,8 @@ class CausalConv1d(torch.nn.Conv1d):
     def forward(self, input):
         result = super(CausalConv1d, self).forward(input)
         if self.__padding != 0:
-            return result[:, :, : -self.__padding]
+            out = result[:, :, : -self.__padding]
+            return out
         return result
 
 
@@ -46,6 +48,13 @@ def _conv_stack(dilations, in_channels, out_channels, kernel_size):
     )
 
 
+def _downsample_stack():
+    return nn.ModuleList([
+        nn.Conv1d(88, 88, kernel_size=4, stride=2, padding=1)
+        for i in range(8)
+    ])
+
+
 class WaveNet(nn.Module):
     def __init__(self, num_channels, dilation_depth, num_repeat, kernel_size=2):
         super(WaveNet, self).__init__()
@@ -53,6 +62,7 @@ class WaveNet(nn.Module):
         internal_channels = int(num_channels * 2)
         self.hidden = _conv_stack(dilations, num_channels, internal_channels, kernel_size)
         self.residuals = _conv_stack(dilations, num_channels, num_channels, 1)
+        self.classifier = _downsample_stack()
         self.input_layer = CausalConv1d(
             in_channels=1,
             out_channels=num_channels,
@@ -61,9 +71,10 @@ class WaveNet(nn.Module):
 
         self.linear_mix = nn.Conv1d(
             in_channels=num_channels * dilation_depth * num_repeat,
-            out_channels=1,
+            out_channels=88,
             kernel_size=1,
         )
+
         self.num_channels = num_channels
 
     def forward(self, x):
@@ -88,7 +99,9 @@ class WaveNet(nn.Module):
         # modified "postprocess" step:
         out = torch.cat([s[:, :, -out.size(2) :] for s in skips], dim=1)
         out = self.linear_mix(out)
-        return out
+        for downsample in self.classifier:
+            out = downsample(out)
+        return out.transpose(1, 2)
 
 
 def error_to_signal(y, y_pred):
@@ -123,9 +136,9 @@ class QuickPitch(pl.LightningModule):
 
     def train_dataloader(self):
         return DataLoader(
-            self.train_ds,
+            self.train_dataset,
             shuffle=True,
-            batch_size=self.params.batch_size,
+            batch_size=self.params['batch_size'],
             num_workers=4,
         )
 
@@ -144,10 +157,9 @@ class QuickPitch(pl.LightningModule):
         return self._step(batch, batch_idx, 'val')
 
     def _step(self, batch, batch_idx, prefix):
-        print(batch['audio'].shape)
         y_pred = self.forward(batch['audio'])
-        print(y_pred.shape)
-        loss = error_to_signal(y[:, :, -y_pred.size(2) :], y_pred).mean()
+        y = batch['note']
+        loss = F.mse_loss(y, y_pred)
         return {f"{prefix}_loss": loss}
 
     def validation_epoch_end(self, outs):

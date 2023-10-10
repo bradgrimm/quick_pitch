@@ -9,7 +9,6 @@ from torch.utils.data import Dataset
 
 DATA_PATH = Path('/mnt/large/data/guitar/')
 MANIFEST_PATH = DATA_PATH / 'manifest-2023-10-08.csv'
-AUDIO_SAMPLE_RATE = 16000
 VALID_COLUMNS = {'onset', 'contour', 'note'}
 
 
@@ -53,8 +52,8 @@ class EmbeddingDataset(Dataset):
 
     def _prepare_audio(self, x):
         # TODO: how much adio do we actually want?
-        return np.expand_dims(x[:16000], axis=0)
+        return np.expand_dims(x[:(AUDIO_SAMPLE_RATE * AUDIO_WINDOW_LENGTH)], axis=0)
 
     def _prepare_target(self, x):
         # TODO: How many targets can we handle?
-        return x[:64]
+        return x[:ANNOT_N_FRAMES]
