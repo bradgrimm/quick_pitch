@@ -139,11 +139,11 @@ class QuickPitch(pl.LightningModule):
             self.train_dataset,
             shuffle=True,
             batch_size=self.params['batch_size'],
-            num_workers=4,
+            num_workers=20,
         )
 
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.params['batch_size'], num_workers=4)
+        return DataLoader(self.val_dataset, batch_size=self.params['batch_size'], num_workers=20)
 
     def forward(self, x):
         return self.wavenet(x)
@@ -151,10 +151,13 @@ class QuickPitch(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         result = self._step(batch, batch_idx, 'train')
         result['loss'] = result['train_loss']
+        self.log_dict(result)
         return result
 
     def validation_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, 'val')
+        result = self._step(batch, batch_idx, 'val')
+        self.log_dict(result)
+        return result
 
     def _step(self, batch, batch_idx, prefix):
         y_pred = self.forward(batch['audio'])

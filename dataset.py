@@ -1,4 +1,5 @@
 from pathlib import Path
+from random import randrange
 
 import librosa
 import numpy as np
@@ -10,6 +11,8 @@ from torch.utils.data import Dataset
 DATA_PATH = Path('/mnt/large/data/guitar/')
 MANIFEST_PATH = DATA_PATH / 'manifest-2023-10-08.csv'
 VALID_COLUMNS = {'onset', 'contour', 'note'}
+CHUNK_SIZE = AUDIO_SAMPLE_RATE * AUDIO_WINDOW_LENGTH
+FRAMES_PER_ANNOT = CHUNK_SIZE / ANNOT_N_FRAMES
 
 
 def load_manifest():
@@ -18,6 +21,7 @@ def load_manifest():
 
 def load_datasets():
     df = load_manifest()
+    df = df[df.audio_path.apply(lambda x: Path(x).parent.name == 'audio_mono-mic')]
     train_df, val_df = train_test_split(df, test_size=0.2)
     train_dataset = EmbeddingDataset(train_df)
     val_dataset = EmbeddingDataset(val_df)
@@ -43,17 +47,14 @@ class EmbeddingDataset(Dataset):
         row = self.df.iloc[idx]
         audio, _ = librosa.load(str(row.audio_path), sr=AUDIO_SAMPLE_RATE, mono=True)
         embedding_data = np.load(row.embedding_path, allow_pickle=True)
+        a_idx = randrange(0, audio.shape[0] - CHUNK_SIZE)
+        t_idx = int(a_idx / FRAMES_PER_ANNOT)
         target_data = {
-            k: self._prepare_target(v)
+            k: v[t_idx:t_idx+ANNOT_N_FRAMES]
             for k, v in embedding_data.item().items()
             if k in VALID_COLUMNS
         }
-        return {'audio': self._prepare_audio(audio), **target_data}
-
-    def _prepare_audio(self, x):
-        # TODO: how much adio do we actually want?
-        return np.expand_dims(x[:(AUDIO_SAMPLE_RATE * AUDIO_WINDOW_LENGTH)], axis=0)
-
-    def _prepare_target(self, x):
-        # TODO: How many targets can we handle?
-        return x[:ANNOT_N_FRAMES]
+        return {
+            'audio': np.expand_dims(audio[a_idx:a_idx+CHUNK_SIZE], axis=0),
+            **target_data,
+        }

@@ -1,5 +1,6 @@
 import pytorch_lightning as pl
 import typer as typer
+from pytorch_lightning.loggers import WandbLogger
 
 from model import QuickPitch
 
@@ -14,11 +15,13 @@ def train(
         dilation_depth: int = 9,
         num_repeat: int = 2,
         kernel_size: int = 3,
-        learning_rate: float = 3e-3,
+        learning_rate: float = 3e-5,
 ):
     params = locals()
     model = QuickPitch(params)
-    trainer = pl.Trainer()
+
+    wandb_logger = WandbLogger(project="quick_pitch")
+    trainer = pl.Trainer(logger=wandb_logger)
     trainer.fit(model)
 
 
