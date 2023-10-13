@@ -4,9 +4,10 @@ from random import randrange
 import librosa
 import numpy as np
 import pandas as pd
-from basic_pitch.constants import AUDIO_SAMPLE_RATE, AUDIO_WINDOW_LENGTH, ANNOT_N_FRAMES
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
+
+from constants import AUDIO_SAMPLE_RATE, ANNOT_N_FRAMES, AUDIO_WINDOW_LENGTH
 
 DATA_PATH = Path('/mnt/large/data/guitar/')
 MANIFEST_PATH = DATA_PATH / 'manifest-2023-10-08.csv'
@@ -39,22 +40,33 @@ def estimate_annotations(n_samples):
 class EmbeddingDataset(Dataset):
     def __init__(self, df):
         self.df = df
+        self._cache = {}
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
-        row = self.df.iloc[idx]
-        audio, _ = librosa.load(str(row.audio_path), sr=AUDIO_SAMPLE_RATE, mono=True)
-        embedding_data = np.load(row.embedding_path, allow_pickle=True)
+        if idx not in self._cache:
+            self._cache[idx] = self._load(idx)
+
+        data = self._cache[idx]
+        audio = data['audio']
         a_idx = randrange(0, audio.shape[0] - CHUNK_SIZE)
+        audio = np.expand_dims(audio[a_idx:a_idx+CHUNK_SIZE], axis=0)
         t_idx = int(a_idx / FRAMES_PER_ANNOT)
+
         target_data = {
             k: v[t_idx:t_idx+ANNOT_N_FRAMES]
-            for k, v in embedding_data.item().items()
-            if k in VALID_COLUMNS
+            for k, v in data.items() if k in VALID_COLUMNS
         }
+        return {'audio': audio, **target_data}
+
+    def _load(self, idx):
+        row = self.df.iloc[idx]
+        audio, _ = librosa.load(str(row.audio_path), sr=AUDIO_SAMPLE_RATE, mono=True)
+        all_data = np.load(row.embedding_path, allow_pickle=True)
+        embeddings = {k: v for k, v in all_data.item().items() if k in VALID_COLUMNS}
         return {
-            'audio': np.expand_dims(audio[a_idx:a_idx+CHUNK_SIZE], axis=0),
-            **target_data,
+            'audio': audio,
+            **embeddings,
         }

@@ -1,7 +1,7 @@
 import pytorch_lightning as pl
-from torch.nn import functional as F
 import torch
 import torch.nn as nn
+from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
 from dataset import load_datasets
@@ -50,8 +50,8 @@ def _conv_stack(dilations, in_channels, out_channels, kernel_size):
 
 def _downsample_stack():
     return nn.ModuleList([
-        nn.Conv1d(88, 88, kernel_size=4, stride=2, padding=1)
-        for i in range(8)
+        nn.MaxPool1d(kernel_size=4, stride=2, padding=1)
+        for _ in range(8)
     ])
 
 
@@ -71,7 +71,7 @@ class WaveNet(nn.Module):
 
         self.linear_mix = nn.Conv1d(
             in_channels=num_channels * dilation_depth * num_repeat,
-            out_channels=88,
+            out_channels=88*3,
             kernel_size=1,
         )
 
@@ -98,23 +98,10 @@ class WaveNet(nn.Module):
 
         # modified "postprocess" step:
         out = torch.cat([s[:, :, -out.size(2) :] for s in skips], dim=1)
-        out = self.linear_mix(out)
         for downsample in self.classifier:
             out = downsample(out)
+        out = self.linear_mix(out)
         return out.transpose(1, 2)
-
-
-def error_to_signal(y, y_pred):
-    """
-    Error to signal ratio with pre-emphasis filter:
-    https://www.mdpi.com/2076-3417/10/3/766/htm
-    """
-    y, y_pred = pre_emphasis_filter(y), pre_emphasis_filter(y_pred)
-    return (y - y_pred).pow(2).sum(dim=2) / (y.pow(2).sum(dim=2) + 1e-10)
-
-
-def pre_emphasis_filter(x, coeff=0.95):
-    return torch.cat((x[:, :, 0:1], x[:, :, 1:] - coeff * x[:, :, :-1]), dim=2)
 
 
 class QuickPitch(pl.LightningModule):
@@ -127,6 +114,7 @@ class QuickPitch(pl.LightningModule):
             kernel_size=params["kernel_size"],
         )
         self.params = params
+        self.save_hyperparameters()
 
     def prepare_data(self):
         self.train_dataset, self.val_dataset = load_datasets()
@@ -161,13 +149,11 @@ class QuickPitch(pl.LightningModule):
 
     def _step(self, batch, batch_idx, prefix):
         y_pred = self.forward(batch['audio'])
-        y = batch['note']
-        loss = F.mse_loss(y, y_pred)
+        y = batch['contour']
+        loss = F.mse_loss(y_pred, y)
         return {f"{prefix}_loss": loss}
 
     def validation_epoch_end(self, outs):
         avg_loss = torch.stack([x["val_loss"] for x in outs]).mean()
         logs = {"val_loss": avg_loss}
         return {"avg_val_loss": avg_loss, "log": logs}
-
-
