@@ -48,7 +48,6 @@ class QuickPitch(pl.LightningModule):
     def _step(self, batch, batch_idx, prefix):
         output = self.forward(batch['audio'])
         y, y_pred = batch['contour'], output['contour']
-        print(y.shape, y_pred.shape)
         loss = F.mse_loss(y_pred, y)
         return {f"{prefix}_loss": loss}
 

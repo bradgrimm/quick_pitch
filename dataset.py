@@ -12,7 +12,7 @@ from constants import AUDIO_SAMPLE_RATE, ANNOT_N_FRAMES, AUDIO_WINDOW_LENGTH, AU
 DATA_PATH = Path('/mnt/large/data/guitar/')
 MANIFEST_PATH = DATA_PATH / 'manifest-2023-10-08.csv'
 VALID_COLUMNS = {'onset', 'contour', 'note'}
-FRAMES_PER_ANNOT = AUDIO_N_SAMPLES / ANNOT_N_FRAMES
+FRAMES_PER_ANNOT = (AUDIO_SAMPLE_RATE * AUDIO_WINDOW_LENGTH) / ANNOT_N_FRAMES
 
 
 def load_manifest():
