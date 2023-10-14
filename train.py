@@ -2,7 +2,7 @@ import pytorch_lightning as pl
 import typer as typer
 from pytorch_lightning.loggers import WandbLogger
 
-from model import QuickPitch
+from quick_pitch_training_module import QuickPitch
 
 app = typer.Typer()
 
@@ -11,10 +11,6 @@ app = typer.Typer()
 def train(
         batch_size: int = 16,
         max_epochs: int = 100,
-        num_channels: int = 32,
-        dilation_depth: int = 10,
-        num_repeat: int = 2,
-        kernel_size: int = 3,
         learning_rate: float = 5e-5,
 ):
     params = locals()

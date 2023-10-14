@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import typer
-from basic_pitch import ICASSP_2022_MODEL_PATH
-from basic_pitch.inference import predict
+from quick_pitch import ICASSP_2022_MODEL_PATH
+from quick_pitch.inference import predict
 from tqdm.auto import tqdm
 
 app = typer.Typer()

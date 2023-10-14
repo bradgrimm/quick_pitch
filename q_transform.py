@@ -25,7 +25,7 @@ class NormalizedCQT(nn.Module):
         )
         self.normalized_log = NormalizedLog()
         if use_batchnorm:
-            self.batch_norm = nn.BatchNorm2d(n_bins)
+            self.batch_norm = nn.BatchNorm2d(1)
 
     def forward(self, inputs):
         """Calculate the CQT of the input audio.
@@ -43,10 +43,11 @@ class NormalizedCQT(nn.Module):
             The log-normalized CQT of the input audio.
         """
         x = self.cqt(inputs)
-        x = self.normalized_log(x).unsqueeze(-1)
+        x = self.normalized_log(x)
+        x = x.unsqueeze(1)  # Add channel
         if self.use_batchnorm:
             x = self.batch_norm(x)
-        return x.transpose(1, 2)
+        return x.transpose(3, 2)
 
 
 class NormalizedLog(nn.Module):
