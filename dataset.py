@@ -7,13 +7,12 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
-from constants import AUDIO_SAMPLE_RATE, ANNOT_N_FRAMES, AUDIO_WINDOW_LENGTH
+from constants import AUDIO_SAMPLE_RATE, ANNOT_N_FRAMES, AUDIO_WINDOW_LENGTH, AUDIO_N_SAMPLES
 
 DATA_PATH = Path('/mnt/large/data/guitar/')
 MANIFEST_PATH = DATA_PATH / 'manifest-2023-10-08.csv'
 VALID_COLUMNS = {'onset', 'contour', 'note'}
-CHUNK_SIZE = AUDIO_SAMPLE_RATE * AUDIO_WINDOW_LENGTH
-FRAMES_PER_ANNOT = CHUNK_SIZE / ANNOT_N_FRAMES
+FRAMES_PER_ANNOT = AUDIO_N_SAMPLES / ANNOT_N_FRAMES
 
 
 def load_manifest():
@@ -51,8 +50,8 @@ class EmbeddingDataset(Dataset):
 
         data = self._cache[idx]
         audio = data['audio']
-        a_idx = randrange(0, audio.shape[0] - CHUNK_SIZE)
-        audio = np.expand_dims(audio[a_idx:a_idx+CHUNK_SIZE], axis=0)
+        a_idx = randrange(0, audio.shape[0] - AUDIO_N_SAMPLES)
+        audio = np.expand_dims(audio[a_idx:a_idx+AUDIO_N_SAMPLES], axis=0)
         t_idx = int(a_idx / FRAMES_PER_ANNOT)
 
         target_data = {

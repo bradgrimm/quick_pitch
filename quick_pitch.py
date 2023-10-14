@@ -48,7 +48,9 @@ class BasicPitchContour(nn.Module):
         x = self.contour_batch_norm_2(x)
         x = F.relu(x)
         x = self.contour_conv_3(x)
-        return F.sigmoid(x)
+        x = F.sigmoid(x)
+        x = x.squeeze(1)
+        return x
 
 
 class HarmonicStacking(nn.Module):
@@ -94,7 +96,7 @@ class HarmonicStacking(nn.Module):
             channels.append(padded)
 
         x = torch.cat(channels, dim=1)
-        x = x[:, :, : self.n_output_freqs, :]  # return only the first n_output_freqs frequency channels
+        x = x[:, :, :, :self.n_output_freqs]  # return only the first n_output_freqs frequency channels
         return x
 
 
