@@ -4,10 +4,12 @@ from random import randrange
 import librosa
 import numpy as np
 import pandas as pd
+from librosa import cqt
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
-from constants import AUDIO_SAMPLE_RATE, ANNOT_N_FRAMES, AUDIO_WINDOW_LENGTH, AUDIO_N_SAMPLES
+from constants import AUDIO_SAMPLE_RATE, ANNOT_N_FRAMES, AUDIO_WINDOW_LENGTH, AUDIO_N_SAMPLES, ANNOTATIONS_N_SEMITONES, \
+    MAX_N_SEMITONES, CONTOURS_BINS_PER_SEMITONE, ANNOTATIONS_BASE_FREQUENCY, FFT_HOP
 
 DATA_PATH = Path('/mnt/large/data/guitar/')
 MANIFEST_PATH = DATA_PATH / 'manifest-2023-10-08.csv'

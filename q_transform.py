@@ -63,11 +63,12 @@ class NormalizedLog(nn.Module):
         power = torch.square(inputs)
         log_power = 10 * log_base_b(power + 1e-10, 10)
 
-        log_power_min = log_power.view(bs, -1).min(axis=1)[0].reshape(-1, 1, 1)
+        log_power_min = log_power.reshape(bs, -1).min(axis=1)[0].reshape(-1, 1, 1)
         log_power_offset = log_power - log_power_min
-        log_power_offset_max = log_power_offset.view(bs, -1).max(axis=1)[0].reshape(bs, 1, 1)
+        log_power_offset_max = log_power_offset.reshape(bs, -1).max(axis=1)[0].reshape(bs, 1, 1)
         log_power_normalized = torch.where(log_power_offset_max != 0, log_power_offset / log_power_offset_max, torch.zeros_like(log_power_offset))
 
+        print(log_power_normalized.shape)
         return log_power_normalized.reshape(inputs.shape)
 
 

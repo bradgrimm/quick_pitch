@@ -1,4 +1,6 @@
 from typing import List
+import onnx
+from onnx2pytorch import ConvertModel
 
 import torch
 from torch import nn
@@ -32,18 +34,27 @@ class BasicPitch(nn.Module):
 class BasicPitchContour(nn.Module):
     def __init__(self, n_filters_contour: int = 32):
         super().__init__()
-        self.contour_conv_1 = nn.Conv2d(8, n_filters_contour, (5, 5), padding="same")
-        self.contour_batch_norm_1 = nn.BatchNorm2d(n_filters_contour)
-        self.contour_activation_1 = nn.ReLU()
-        self.contour_conv_2 = nn.Conv2d(n_filters_contour, 8, (3, 3 * 13), padding="same")
+        # self.contour_conv_1 = nn.Conv2d(8, n_filters_contour, (5, 5), padding="same")
+        # self.contour_batch_norm_1 = nn.BatchNorm2d(n_filters_contour)
+        # self.contour_activation_1 = nn.ReLU()
+        self.contour_conv_2 = nn.Conv2d(8, 8, (3, 3 * 13), padding="same")
         self.contour_batch_norm_2 = nn.BatchNorm2d(8)
         self.contour_activation_2 = nn.ReLU()
         self.contour_conv_3 = nn.Conv2d(8, 1, (5, 5), padding="same")
+        self._load_weights_from_onnx()
+
+    def _load_weights_from_onnx(self):
+        onnx_model = onnx.load('/home/bgrimm/basic_pitch.onnx')
+        pytorch_model = ConvertModel(onnx_model)
+        m = list(pytorch_model.modules())
+        # self.contour_conv_1.load_state_dict(m[-17].state_dict())
+        self.contour_conv_2.load_state_dict(m[-15].state_dict())
+        self.contour_conv_3.load_state_dict(m[-13].state_dict())
 
     def forward(self, x):
-        x = self.contour_conv_1(x)
-        x = self.contour_batch_norm_1(x)
-        x = F.relu(x)
+        # x = self.contour_conv_1(x)
+        # x = self.contour_batch_norm_1(x)
+        # x = F.relu(x)
         x = self.contour_conv_2(x)
         x = self.contour_batch_norm_2(x)
         x = F.relu(x)
