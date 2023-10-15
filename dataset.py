@@ -52,13 +52,17 @@ class EmbeddingDataset(Dataset):
         audio = data['audio']
         a_idx = randrange(0, audio.shape[0] - AUDIO_N_SAMPLES)
         audio = np.expand_dims(audio[a_idx:a_idx+AUDIO_N_SAMPLES], axis=0)
-        t_idx = int(a_idx / FRAMES_PER_ANNOT)
-
+        t_idx = self._safe_target_idx(data, a_idx)
         target_data = {
             k: v[t_idx:t_idx+ANNOT_N_FRAMES]
             for k, v in data.items() if k in VALID_COLUMNS
         }
         return {'audio': audio, **target_data}
+
+    def _safe_target_idx(self, data, a_idx):
+        t_idx = int(a_idx / FRAMES_PER_ANNOT)
+        total = data['contour'].shape[0]
+        return np.clip(t_idx, 0, total - ANNOT_N_FRAMES)
 
     def _load(self, idx):
         row = self.df.iloc[idx]
